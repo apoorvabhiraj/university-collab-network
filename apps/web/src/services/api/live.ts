@@ -621,13 +621,15 @@ export async function livePoll(
   notifications: NotificationItem[];
   projects: Project[];
   events: CampusEvent[];
+  connections: Connection[];
   activeMessages: Message[];
 }> {
-  const [convRows, notifRows, projRows, eventRows] = await Promise.all([
+  const [convRows, notifRows, projRows, eventRows, connRows] = await Promise.all([
     fetchPage('/conversations?limit=50').catch(() => [] as AnyRow[]),
     fetchPage('/notifications?limit=50').catch(() => [] as AnyRow[]),
     fetchPage('/projects?limit=50').catch(() => [] as AnyRow[]),
     fetchPage('/events?limit=50').catch(() => [] as AnyRow[]),
+    fetchConnections(),
   ]);
 
   let activeMessages: Message[] = [];
@@ -649,6 +651,7 @@ export async function livePoll(
     notifications: notifRows.map((r) => mapApiNotification(r, currentUserId)),
     projects: projRows.map((r) => mapApiProject(r)),
     events: eventRows.map((r) => mapApiEvent(r, currentUserId)),
+    connections: connRows,
     activeMessages,
   };
 }

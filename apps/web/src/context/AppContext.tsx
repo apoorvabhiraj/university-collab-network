@@ -401,6 +401,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode; mode?: 'live' | 
           });
           setProjects(data.projects);
           setEvents(data.events);
+          // connections (the auto-accepted message requests reflect live)
+          setConnections(data.connections);
           setMessages((prev) => {
             // keep other threads' messages + in-flight optimistic ones;
             // replace only the active thread's slice with fresh data

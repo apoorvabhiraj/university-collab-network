@@ -26,13 +26,22 @@ export async function openOrCreateDirect(userId: string, targetUserId: string) {
   if (target.status === "suspended" || target.status === "banned") {
     throw new ForbiddenError("This user cannot receive messages");
   }
-  // Messaging respects the connection system: no accepted connection → no
-  // direct messaging. Enforced server-side — never only in the UI.
-  const connected = await connectionRepository.areConnected(userId, targetUserId);  if (!connected) {
-    throw new ForbiddenError("You must be connected with this user before messaging them");
-  }
+  // Messaging + connections (Instagram-style request pattern): a
+  // non-connected user may send ONE initial message — a message request.
+  // The recipient's first REPLY auto-accepts the connection, unlocking
+  // free conversation for both. Enforced server-side — never only in the UI.
   const existing = await conversationRepository.findExistingDirect([userId, targetUserId]);
   if (existing) return existing;
+  // Seed an implicit PENDING connection (the message request) — visible in
+  // the recipient's dashboard inbox; their reply auto-accepts it.
+  const existingConnection = await connectionRepository.findBetween(userId, targetUserId);
+  if (!existingConnection) {
+    try {
+      await connectionRepository.create(userId, targetUserId, "");
+    } catch {
+      // a race — the connection may already exist
+    }
+  }
   return conversationRepository.create({
     type: "direct",
     participantIds: [userId, targetUserId],
@@ -153,6 +162,45 @@ export async function sendMessage(
   input: CreateMessageRequest,
 ) {
   await assertParticipant(conversationId, userId);
+
+  const conv = await conversationRepository.findById(conversationId);
+  const otherId = conv?.participants?.map((p) => p.userId).find((id) => id !== userId) ?? null;
+
+  // Message-request rule (server-enforced): in a conversation between
+  // NON-connected users, the sender may send exactly ONE initial message
+  // until the recipient replies.
+  const connected = otherId ? await connectionRepository.areConnected(userId, otherId) : true;
+  if (!connected) {
+    const myMessages = await prisma.message.count({
+      where: { conversationId, senderId: userId },
+    });
+    if (myMessages >= 1) {
+      throw new ForbiddenError(
+        "Your message request is waiting for a reply — they can reply to unlock the conversation",
+      );
+    }
+  }
+
+  // The RECIPIENT replying auto-accepts the pending connection — both
+  // parties can now converse freely (the Instagram unlock). The REQUESTER
+  // sending more messages never auto-accepts their own request (that would
+  // bypass the recipient's consent AND the 1-message rule).
+  if (otherId && !connected) {
+    const pending = await connectionRepository.findBetween(userId, otherId);
+    if (pending && pending.status === "pending" && pending.requesterId === otherId) {
+      try {
+        await connectionRepository.updateStatus(pending.id, "accepted");
+        await notificationRepository.create(otherId, "connection_request", {
+          connectionId: pending.id,
+          responderId: userId,
+          status: "accepted",
+        });
+      } catch {
+        // Non-blocking side effect
+      }
+    }
+  }
+
   const msg = await conversationRepository.createMessage({
     conversationId,
     senderId: userId,

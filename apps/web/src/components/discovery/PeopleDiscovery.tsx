@@ -373,13 +373,8 @@ export const PeopleDiscovery: React.FC = () => {
                         <>
                           <button
                             onClick={() => startConversationWithUser(user.id)}
-                            className={
-                              incomingFromMe
-                                ? 'p-1.5 rounded-lg border border-zinc-200 text-zinc-400 cursor-not-allowed'
-                                : 'p-1.5 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors'
-                            }
-                            title={incomingFromMe ? 'Their request is waiting for you — accept to message' : 'Connect to send a direct message'}
-                            disabled={incomingFromMe}
+                            className="p-1.5 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+                            title={connected ? 'Send a message' : incomingFromMe ? 'They want to connect — reply to unlock' : 'Message them (your first message is a request they can reply to)'}
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
