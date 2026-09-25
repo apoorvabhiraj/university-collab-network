@@ -60,14 +60,29 @@ async function fetchPage(path: string): Promise<AnyRow[]> {
 }
 
 /** Resolve free-text skill names to skill UUIDs (create missing ones) —
- * the API's skillsNeeded contract works with IDs, not names. */
+ * the API's skillsNeeded contract works with IDs, not names.
+ *
+ * Paginates the FULL taxonomy (the API paginates at 100/page — a single
+ * page hid Python/React/TypeScript, so existing skills were "created"
+ * again → unique-constraint errors → project creation failed). Creation
+ * of a missing skill is duplicate-safe: on conflict, re-fetch + find. */
 async function resolveSkills(
   names: string[],
 ): Promise<{ skillId: string; roleNeeded: SkillRoleNeeded }[]> {
   if (names.length === 0) return [];
-  const rows = await fetchPage('/skills?limit=100');
+
   const byName = new Map<string, string>();
-  for (const s of rows) byName.set(String(s.name ?? '').toLowerCase().trim(), String(s.id));
+  let cursor: string | null = null;
+  for (let i = 0; i < 5; i++) {
+    const page = await apiFetch<{ data?: AnyRow[]; nextCursor?: string | null }>(
+      `/skills?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+    );
+    for (const s of page.data ?? []) {
+      byName.set(String(s.name ?? '').toLowerCase().trim(), String(s.id));
+    }
+    cursor = page.nextCursor ?? null;
+    if (!cursor) break;
+  }
 
   const out: { skillId: string; roleNeeded: SkillRoleNeeded }[] = [];
   for (const rawName of names) {
@@ -75,11 +90,20 @@ async function resolveSkills(
     if (!key) continue;
     let id = byName.get(key);
     if (!id) {
-      const created = await apiFetch<AnyRow>('/skills', {
-        method: 'POST',
-        body: { name: rawName.trim() },
-      });
-      id = String(created.id);
+      try {
+        const created = await apiFetch<AnyRow>('/skills', {
+          method: 'POST',
+          body: { name: rawName.trim() },
+        });
+        id = String(created.id);
+      } catch {
+        // The skill already exists (unique name) — re-fetch and find it
+        const rows = await fetchPage(`/skills?limit=100&q=${encodeURIComponent(rawName.trim())}`);
+        id = rows
+          .map((s) => [String(s.name ?? '').toLowerCase().trim(), String(s.id)] as const)
+          .find(([n]) => n === key)?.[1] ?? '';
+      }
+      if (!id) continue;
       byName.set(key, id);
     }
     out.push({ skillId: id, roleNeeded: inferRole(rawName) });

@@ -4,9 +4,9 @@ import { ConflictError, NotFoundError } from "../utils/errors.js";
 import { buildPaginatedResponse, toPageParams } from "../utils/pagination.js";
 import type { CreateSkillRequest, SkillProficiency } from "@app/shared-types";
 
-export async function list(cursor: string | undefined, limit: number, category?: string) {
+export async function list(cursor: string | undefined, limit: number, category?: string, q?: string) {
   const { skip, take } = toPageParams(cursor, limit);
-  const items = await skillRepository.list({ skip, take, category });
+  const items = await skillRepository.list({ skip, take, category, q });
   return buildPaginatedResponse(items, skip, take);
 }
 

@@ -2,9 +2,10 @@ import { prisma } from "./prisma.js";
 import type { Prisma } from "@prisma/client";
 
 export class SkillRepository {
-  async list(params: { skip: number; take: number; category?: string }) {
+  async list(params: { skip: number; take: number; category?: string; q?: string }) {
     const where: Prisma.SkillWhereInput = {};
     if (params.category) where.category = params.category;
+    if (params.q) where.name = { contains: params.q, mode: "insensitive" };
     return prisma.skill.findMany({
       where,
       skip: params.skip,

@@ -5,8 +5,8 @@ import type { CreateSkillRequest, PaginationQuery, SkillProficiency } from "@app
 export async function list(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { cursor, limit } = req.query as unknown as PaginationQuery;
-    const { category } = req.query as Record<string, string | undefined>;
-    res.status(200).json(await skillService.list(cursor, limit, category));
+    const { category, q } = req.query as Record<string, string | undefined>;
+    res.status(200).json(await skillService.list(cursor, limit, category, q));
   } catch (err: unknown) {
     next(err);
   }
