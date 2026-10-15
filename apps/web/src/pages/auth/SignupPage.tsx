@@ -18,6 +18,7 @@ export default function SignupPage(): JSX.Element {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [requestedRole, setRequestedRole] = useState<RequestedRole>("student");
+  const [agreed, setAgreed] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const signup = useSignup();
@@ -130,9 +131,30 @@ export default function SignupPage(): JSX.Element {
         </p>
       )}
 
+      <label className="flex items-start gap-2 text-xs text-text-secondary">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          required
+          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-border text-accent-600 focus:ring-accent-500"
+        />
+        <span>
+          I agree to the{" "}
+          <Link to="/terms" target="_blank" className="text-accent-600 hover:text-accent-700">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" target="_blank" className="text-accent-600 hover:text-accent-700">
+            Privacy Policy
+          </Link>
+          , including the platform's content and collaboration rules.
+        </span>
+      </label>
+
       <button
         type="submit"
-        disabled={signup.isPending}
+        disabled={signup.isPending || !agreed}
         className="rounded-md bg-accent-600 px-4 py-2 text-sm font-medium text-text-onAccent transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {signup.isPending ? "Creating account�" : "Create account"}

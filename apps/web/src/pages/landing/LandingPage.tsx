@@ -17,11 +17,22 @@ export default function LandingPage(): JSX.Element {
         </Link>
         <Link
           to="/signup"
-          className="rounded-md bg-accent-600 px-4 py-2 text-sm text-text-onAccent"
+          className="rounded-md bg-accent-600 px-4 py-2 text-sm font-medium text-text-onAccent"
         >
           Sign up
         </Link>
       </div>
+      <footer className="mt-16 flex flex-col items-center gap-2 border-t border-border pt-8 pb-4 text-xs text-text-muted">
+        <p>University Collaboration Network — campus collaboration, built on real work.</p>
+        <div className="flex items-center gap-4">
+          <Link to="/terms" className="hover:text-text-primary">
+            Terms of Service
+          </Link>
+          <Link to="/privacy" className="hover:text-text-primary">
+            Privacy Policy
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }
