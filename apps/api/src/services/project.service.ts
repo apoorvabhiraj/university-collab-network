@@ -19,9 +19,22 @@ export async function list(params: {
   return buildPaginatedResponse(items, skip, take);
 }
 
-export async function getById(id: string) {
+export async function getById(id: string, viewerId?: string) {
   const project = await projectRepository.findById(id);
   if (!project) throw new NotFoundError("Project not found");
+
+  // Visibility enforcement (spec §4/§5): private projects are only
+  // visible to the creator and accepted members. Server-side — the
+  // frontend never decides.
+  if (project.visibility === "private" && project.createdBy !== viewerId) {
+    const isMember = viewerId
+      ? await prisma.projectMember.findUnique({
+          where: { projectId_userId: { projectId: id, userId: viewerId } },
+        })
+      : null;
+    if (!isMember) throw new NotFoundError("Project not found");
+  }
+
   return project;
 }
 

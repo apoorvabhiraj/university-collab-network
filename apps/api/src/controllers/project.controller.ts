@@ -21,7 +21,9 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 
 export async function getById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    res.status(200).json(await projectService.getById(req.params.id as string));
+    res
+      .status(200)
+      .json(await projectService.getById(req.params.id as string, req.user?.id));
   } catch (err: unknown) {
     next(err);
   }

@@ -48,7 +48,11 @@ apiV1Router.use("/admin", adminRouter);
 
 // Test & diagnostics routes (dev/test only)
 if (process.env.NODE_ENV !== "production") {
-  apiV1Router.use("/test", testRouter);
+  // Deliberate-error test routes — development only (spec §6: production
+  // debug endpoints must be unavailable to unauthorized users)
+  if (process.env.NODE_ENV !== "production") {
+    apiV1Router.use("/test", testRouter);
+  }
 }
 
 export { apiV1Router, healthRouter };

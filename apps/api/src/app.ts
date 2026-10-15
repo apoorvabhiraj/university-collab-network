@@ -8,6 +8,7 @@ import { logger } from "./utils/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { NotFoundError } from "./utils/errors.js";
 import { apiV1Router, healthRouter } from "./routes/index.js";
+import { securityHeaders, rateLimit } from "./middleware/security.js";
 
 export function createApp(): Express {
   const app = express();
@@ -51,8 +52,11 @@ export function createApp(): Express {
     }),
   );
 
+  // 2.5. Security headers (spec §7) — applied to every response
+  app.use(securityHeaders);
+
   // 3. Body parsing middleware
-  app.use(express.json({ limit: "2mb" }));
+  app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
@@ -60,6 +64,16 @@ export function createApp(): Express {
   app.use(healthRouter);
 
   // 5. Versioned API routes
+  // Rate limits on abuse-prone endpoints (spec §10) — per-operation
+  // limits, registered BEFORE the router mount so they actually run
+  // (Express middleware order: first registered wins).
+  app.use("/api/v1/auth/login", rateLimit({ windowMs: 15 * 60_000, max: 10, name: "login" }));
+  app.use("/api/v1/auth/signup", rateLimit({ windowMs: 60 * 60_000, max: 10, name: "signup" }));
+  app.use("/api/v1/auth/forgot-password", rateLimit({ windowMs: 60 * 60_000, max: 5, name: "forgot" }));
+  app.use("/api/v1/auth/reset-password", rateLimit({ windowMs: 60 * 60_000, max: 5, name: "reset" }));
+  app.use("/api/v1/auth/verify-email", rateLimit({ windowMs: 60 * 60_000, max: 20, name: "verify" }));
+  app.use("/api/v1/groups", rateLimit({ windowMs: 60 * 60_000, max: 200, name: "groups" }));
+
   app.use("/api/v1", apiV1Router);
 
   // 6. 404 Fallback for unmatched routes

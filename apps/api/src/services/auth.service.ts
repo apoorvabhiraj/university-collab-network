@@ -40,6 +40,16 @@ function getAccessSecret(): string {
   if (!secret) {
     throw new Error("JWT_ACCESS_SECRET is not set (see ENVIRONMENT.md)");
   }
+  // Fail safely in production: default/dev placeholders must never sign
+  // real tokens (spec §2 — fail safely when production secrets are invalid)
+  if (
+    process.env.NODE_ENV === "production" &&
+    (secret.includes("dev-") || secret.includes("change-me") || secret.length < 32)
+  ) {
+    throw new Error(
+      "JWT_ACCESS_SECRET is a development placeholder — set a strong production secret (see ENVIRONMENT.md)",
+    );
+  }
   return secret;
 }
 
